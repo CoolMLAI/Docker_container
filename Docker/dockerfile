@@ -1,0 +1,57 @@
+# Use a valid CUDA base image with Ubuntu 22.04
+FROM nvidia/cuda:12.4.0-base-ubuntu22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update and install necessary packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        openssh-server \
+        sudo \
+        git \
+        curl \
+        nodejs \
+        npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PM2 globally
+RUN npm install -g pm2
+
+# Create a new user 'dockeruser' with sudo privileges
+RUN useradd -m -s /bin/bash dockeruser && \
+    echo "dockeruser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Set up SSH
+RUN mkdir /var/run/sshd
+
+# Generate SSH host keys during build
+RUN ssh-keygen -A
+
+# Create SSH directory for the new user
+RUN mkdir -p /home/dockeruser/.ssh
+
+# **Add your public SSH key**
+RUN echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCzvJug2OkIEPRkamr5vxhYgt46yIn0rnxdcuTz6DJATPnHVR0gzNr96qgxK1AOY1vIBh0T3c1HcyI++qbWKc/vUqRaqMac9pyuzx6dGy6hop7h6Z8hT/ERDImZO8jElOyU4Fs84cHCIL9/UJyMZPJzDG6D6UNsXHS1H/5BUKiKys7FEpeLHTHybfnPBrBKVQ1eWI4O0/pfbv3OJLUCvBzeqmDMRR5k5KtetaYfS14kToVXLXqdbkt4NZeiqPOM1b65ZXeOyS2JCDsXoiIjEfWyYYJGenqgU1NGgnBppCzWUn3nYG5sJ9pmbarwevXjHT7X3eOTyZNyp3n20yOesCFelqscq8HN/S+8hci9cQFwZTxsmY5uf+OSs0puuWLjci7lj4+J6KWU/eoLJ9RIPtbN8em1qRQAcYouX180ZYYRDehIbCW9uH4hYonhWqnADlG8lXS2XRKtvSzKx9G7UIdoeZAGL8mfpMGV0bVZcdTGW0aZJ30iFtsE86RDog+89i2XeSo4ZcXZvpf/fTXhi6ObL0OXj95Y38M+ErQr10lgFKQQEQ/MurlLoLAVY9Y2QRLWYOO/MNrX7SNX8PSI6ubYh1JOkDroGpX79jFMbam//w6OHh7cH/HHFGSl2LYoKyHuAxAEwvMKtgsAXc69gXmmc92xg+DRAreVWyYCA75FSw== administrator@DESKTOP-LBIL70D" > /home/dockeruser/.ssh/authorized_keys
+# Set the correct permissions
+RUN chown -R dockeruser:dockeruser /home/dockeruser/.ssh && \
+    chmod 700 /home/dockeruser/.ssh && \
+    chmod 600 /home/dockeruser/.ssh/authorized_keys
+
+# Disable root SSH login
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config
+
+# Disable password authentication for SSH
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+
+# Create the app directory and set ownership
+RUN mkdir -p /home/dockeruser/app && \
+    chown -R dockeruser:dockeruser /home/dockeruser/app
+
+# Expose SSH port
+EXPOSE 22
+
+# Start SSH daemon directly
+CMD ["/usr/sbin/sshd", "-D"]
