@@ -1,5 +1,5 @@
 # Use a valid CUDA base image with Ubuntu 22.04
-FROM nvidia/cuda:12.4.0-base-ubuntu22.04
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -12,13 +12,7 @@ RUN apt-get update && \
         openssh-server \
         sudo \
         git \
-        curl \
-        nodejs \
-        npm \
     && rm -rf /var/lib/apt/lists/*
-
-# Install PM2 globally
-RUN npm install -g pm2
 
 # Create a new user 'dockeruser' with sudo privileges
 RUN useradd -m -s /bin/bash dockeruser && \
@@ -27,14 +21,13 @@ RUN useradd -m -s /bin/bash dockeruser && \
 # Set up SSH
 RUN mkdir /var/run/sshd
 
-# Generate SSH host keys during build
-RUN ssh-keygen -A
-
 # Create SSH directory for the new user
 RUN mkdir -p /home/dockeruser/.ssh
 
 # **Add your public SSH key**
-RUN echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCzvJug2OkIEPRkamr5vxhYgt46yIn0rnxdcuTz6DJATPnHVR0gzNr96qgxK1AOY1vIBh0T3c1HcyI++qbWKc/vUqRaqMac9pyuzx6dGy6hop7h6Z8hT/ERDImZO8jElOyU4Fs84cHCIL9/UJyMZPJzDG6D6UNsXHS1H/5BUKiKys7FEpeLHTHybfnPBrBKVQ1eWI4O0/pfbv3OJLUCvBzeqmDMRR5k5KtetaYfS14kToVXLXqdbkt4NZeiqPOM1b65ZXeOyS2JCDsXoiIjEfWyYYJGenqgU1NGgnBppCzWUn3nYG5sJ9pmbarwevXjHT7X3eOTyZNyp3n20yOesCFelqscq8HN/S+8hci9cQFwZTxsmY5uf+OSs0puuWLjci7lj4+J6KWU/eoLJ9RIPtbN8em1qRQAcYouX180ZYYRDehIbCW9uH4hYonhWqnADlG8lXS2XRKtvSzKx9G7UIdoeZAGL8mfpMGV0bVZcdTGW0aZJ30iFtsE86RDog+89i2XeSo4ZcXZvpf/fTXhi6ObL0OXj95Y38M+ErQr10lgFKQQEQ/MurlLoLAVY9Y2QRLWYOO/MNrX7SNX8PSI6ubYh1JOkDroGpX79jFMbam//w6OHh7cH/HHFGSl2LYoKyHuAxAEwvMKtgsAXc69gXmmc92xg+DRAreVWyYCA75FSw== administrator@DESKTOP-LBIL70D" > /home/dockeruser/.ssh/authorized_keys
+# Replace 'YOUR_ACTUAL_PUBLIC_SSH_KEY' with your actual public SSH key
+RUN echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCeMMFsl60mjhF7bQBsMwDbqsnekb5DvhPG1iE6ugR5YKIFIAbnEjKVw1OKbJBlYWAmb90fUbLXlcWajiJDLRBUAbvM21IZHn023QX6fHz00A8Ek6lle6E8AAukYXRWDF21wvNosUBXZo3e7xmWFQMmAZdzqsxOhF0Y2fyA3v/PDL6CgfssO5pBn2q0F8YrB3g8UBw8qYJGnbrmOYyAAFmS9GvCu9MPeILgsFijlQAn85JM2+ve3ng9UyD/9qan3K4O5YQZ2VVoUsyx1sUVrHZFzuEEbr8IXxe1fz/h4MVIet/iu57wzpSM6wmCKDJNUFXpEZSKovC+3T7TLCmCtJ03C6qsgWlXDBuT7fAlIIDzQSFH6I6w1LfaNq730SAgaxc/qkPNaoj1nruvWxkdyCvJnsm/neY5VE0pjNmjWPNcfm0MN7AVD0AXB9Vplq5HxARNknsXExzH9HSYvpt2Wndz/c9/sTz3Fn1vX2QnuUwtJrFeG0f6S94vakvFx/iaP2XTlHDNJn/FggH2+NAIrFlYFrOuSZD3mNE6k7Qy1sJ/gJikkevQmrx0QlTNER3pqi9oalVHv9ykx1S4cPXY1pplPhJyu/32Fhx84N4R1Gdril0q+fLLfm8ECV4FzpLGaVFG7gtUdV0TrkAF6i8v7zgF7e0efSDfHJ8YmiXdQhDeHw== coolroman1010@gmail.com your_email@example.com" > /home/dockeruser/.ssh/authorized_keys
+
 # Set the correct permissions
 RUN chown -R dockeruser:dockeruser /home/dockeruser/.ssh && \
     chmod 700 /home/dockeruser/.ssh && \
@@ -46,6 +39,7 @@ RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/s
 # Disable password authentication for SSH
 RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
+
 # Create the app directory and set ownership
 RUN mkdir -p /home/dockeruser/app && \
     chown -R dockeruser:dockeruser /home/dockeruser/app
@@ -53,5 +47,5 @@ RUN mkdir -p /home/dockeruser/app && \
 # Expose SSH port
 EXPOSE 22
 
-# Start SSH daemon directly
-CMD ["/usr/sbin/sshd", "-D"]
+# **Modify the CMD to generate host keys before starting sshd**
+CMD ["sh", "-c", "ssh-keygen -A && /usr/sbin/sshd -D"]
