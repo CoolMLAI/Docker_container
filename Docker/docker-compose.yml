@@ -1,15 +1,21 @@
+
 services:
   app:
     build: .
     ports:
       - "2140:22"
+      - "2141:2141"
+      - "2142:2142"
     volumes:
       - ./app:/home/dockeruser/app
     container_name: my_docker_container
+    # Enable GPU access
     deploy:
       resources:
         reservations:
           devices:
-            - capabilities: [gpu]
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     # Alternatively, use the 'gpus' key directly:
     # gpus: all
